@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import socket
 from datetime import datetime
 from datetime import date
 from email.headerregistry import Address
@@ -22,6 +23,27 @@ from config import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class IPv4SMTP(smtplib.SMTP):
+    """SMTP client that resolves/connects using IPv4 only."""
+
+    def _get_socket(self, host, port, timeout):
+        LOGGER.debug("Opening IPv4 SMTP socket to %s:%s", host, port)
+        addresses = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+        last_error = None
+        for family, socktype, proto, _, sockaddr in addresses:
+            sock = socket.socket(family, socktype, proto)
+            sock.settimeout(timeout)
+            try:
+                sock.connect(sockaddr)
+                return sock
+            except OSError as exc:
+                last_error = exc
+                sock.close()
+        if last_error:
+            raise last_error
+        raise OSError(f"No IPv4 address found for SMTP host {host}")
 
 
 def build_digest(jobs: list[dict]) -> tuple[str, str, str]:
@@ -128,7 +150,14 @@ def send_email(jobs: list[dict]) -> None:
 
     LOGGER.info("Sending email digest with %s jobs to %s", len(jobs), ALERT_EMAIL)
     LOGGER.info("Connecting to SMTP server %s:%s as %s", SMTP_HOST, SMTP_PORT, SMTP_USER)
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as server:
+    try:
+        server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
+    except OSError as exc:
+        LOGGER.warning("SMTP connection failed over default network path: %s", exc)
+        LOGGER.info("Retrying SMTP connection over IPv4")
+        server = IPv4SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
+
+    with server:
         server.starttls()
         LOGGER.info("SMTP TLS started")
         server.login(SMTP_USER, SMTP_PASSWORD)

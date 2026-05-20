@@ -1,0 +1,11 @@
+[Unit]
+Description=Run CareerBot every hour
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=1h
+Persistent=true
+Unit=careerbot.service
+
+[Install]
+WantedBy=timers.target

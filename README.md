@@ -132,6 +132,103 @@ Then push the project to GitHub. The action will install dependencies and run:
 python scraper.py
 ```
 
+## DigitalOcean Droplet Deployment
+
+Use this when you want CareerBot to run continuously from a DigitalOcean Ubuntu droplet. Do not run both GitHub Actions and the droplet scheduler at the same time unless you intentionally want two separate deployments checking jobs.
+
+SSH into the droplet, update packages, and install system dependencies:
+
+```bash
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip curl ca-certificates
+```
+
+Create a dedicated Linux user and install the app under `/opt/careerbot`:
+
+```bash
+sudo useradd --system --create-home --shell /usr/sbin/nologin careerbot
+sudo git clone https://github.com/Steven-Nanga/careerbot.git /opt/careerbot
+sudo chown -R careerbot:careerbot /opt/careerbot
+cd /opt/careerbot
+```
+
+Create the virtual environment and install Python dependencies:
+
+```bash
+sudo -u careerbot python3 -m venv /opt/careerbot/.venv
+sudo -u careerbot /opt/careerbot/.venv/bin/pip install --upgrade pip
+sudo -u careerbot /opt/careerbot/.venv/bin/pip install -r /opt/careerbot/requirements.txt
+```
+
+Create the production environment file:
+
+```bash
+sudo cp /opt/careerbot/.env.example /opt/careerbot/.env
+sudo nano /opt/careerbot/.env
+sudo chown careerbot:careerbot /opt/careerbot/.env
+sudo chmod 600 /opt/careerbot/.env
+```
+
+Set these values in `/opt/careerbot/.env`:
+
+```text
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=careerbot71@gmail.com
+EMAIL_FROM_NAME=CareerBot
+SMTP_PASSWORD=your_gmail_app_password_here
+ALERT_EMAIL=stephennanga97@gmail.com
+SSL_VERIFY=true
+REQUEST_TIMEOUT=30
+RESUME_SCORE_ALERT_THRESHOLD=45
+```
+
+Test the app manually from the droplet:
+
+```bash
+sudo -u careerbot /opt/careerbot/.venv/bin/python /opt/careerbot/scraper.py --dry-run
+sudo -u careerbot /opt/careerbot/.venv/bin/python /opt/careerbot/scraper.py --test-email
+```
+
+Install the hourly `systemd` timer:
+
+```bash
+sudo cp /opt/careerbot/deploy/systemd/careerbot.service /etc/systemd/system/careerbot.service
+sudo cp /opt/careerbot/deploy/systemd/careerbot.timer /etc/systemd/system/careerbot.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now careerbot.timer
+```
+
+Check that the timer is active:
+
+```bash
+systemctl list-timers careerbot.timer
+systemctl status careerbot.timer
+```
+
+Run it immediately:
+
+```bash
+sudo systemctl start careerbot.service
+```
+
+View logs:
+
+```bash
+journalctl -u careerbot.service -n 100 --no-pager
+journalctl -u careerbot.service -f
+```
+
+Update the app later:
+
+```bash
+cd /opt/careerbot
+sudo git pull
+sudo chown -R careerbot:careerbot /opt/careerbot
+sudo -u careerbot /opt/careerbot/.venv/bin/pip install -r /opt/careerbot/requirements.txt
+sudo systemctl restart careerbot.timer
+```
+
 ## Matching Rules
 
 A job must match at least one primary keyword in its title, organisation, location, or description to trigger an alert. Secondary keywords are included in the email's match reason but do not trigger an alert by themselves.

@@ -1,0 +1,15 @@
+[Unit]
+Description=CareerBot job scraper
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=careerbot
+Group=careerbot
+WorkingDirectory=/opt/careerbot
+EnvironmentFile=/opt/careerbot/.env
+ExecStart=/opt/careerbot/.venv/bin/python /opt/careerbot/scraper.py
+Nice=5
+PrivateTmp=true
+NoNewPrivileges=true

@@ -1,0 +1,17 @@
+services:
+  careerbot:
+    build: .
+    container_name: careerbot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      JOB_SCRAPER_DB: /data/jobs.db
+      RESUME_DIR: /data/Resumes
+      SSL_VERIFY: "true"
+    volumes:
+      - careerbot_data:/data
+      - ./Resumes:/data/Resumes:ro
+
+volumes:
+  careerbot_data:

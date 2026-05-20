@@ -132,9 +132,106 @@ Then push the project to GitHub. The action will install dependencies and run:
 python scraper.py
 ```
 
-## DigitalOcean Droplet Deployment
+## DigitalOcean Docker Deployment
 
-Use this when you want CareerBot to run continuously from a DigitalOcean Ubuntu droplet. Do not run both GitHub Actions and the droplet scheduler at the same time unless you intentionally want two separate deployments checking jobs.
+This is the recommended deployment method for a DigitalOcean droplet. The Docker container runs CareerBot immediately when it starts, then runs it again every hour. The SQLite database is stored in a Docker volume so seen jobs are preserved across container restarts and image updates.
+
+Do not run both GitHub Actions and the droplet container at the same time unless you intentionally want two separate deployments checking jobs. They would have separate databases and can send duplicate alerts.
+
+SSH into the droplet, update packages, and install Docker:
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl git
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Clone the app:
+
+```bash
+sudo git clone https://github.com/Steven-Nanga/careerbot.git /opt/careerbot
+cd /opt/careerbot
+```
+
+Create the production environment file:
+
+```bash
+sudo cp .env.example .env
+sudo nano .env
+sudo chmod 600 .env
+sudo mkdir -p Resumes
+```
+
+Set these values in `/opt/careerbot/.env`:
+
+```text
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=careerbot71@gmail.com
+EMAIL_FROM_NAME=CareerBot
+SMTP_PASSWORD=your_gmail_app_password_here
+ALERT_EMAIL=stephennanga97@gmail.com
+SSL_VERIFY=true
+REQUEST_TIMEOUT=30
+RESUME_SCORE_ALERT_THRESHOLD=45
+```
+
+Build and start CareerBot:
+
+```bash
+sudo docker compose up -d --build
+```
+
+If you want resume-aware matching on the droplet, upload your resume files into `/opt/careerbot/Resumes`. The Docker container mounts that folder read-only at `/data/Resumes`.
+
+Check logs:
+
+```bash
+sudo docker compose logs -f careerbot
+```
+
+Run a manual dry run without sending email:
+
+```bash
+sudo docker compose run --rm careerbot python /app/scraper.py --dry-run
+```
+
+Send a test email:
+
+```bash
+sudo docker compose run --rm careerbot python /app/scraper.py --test-email
+```
+
+Run the scraper once immediately:
+
+```bash
+sudo docker compose run --rm careerbot python /app/scraper.py
+```
+
+Update the app later:
+
+```bash
+cd /opt/careerbot
+sudo git pull
+sudo docker compose up -d --build
+```
+
+Stop CareerBot:
+
+```bash
+sudo docker compose down
+```
+
+The database lives in the `careerbot_data` Docker volume. Do not delete that volume unless you want CareerBot to forget all previously seen jobs.
+
+## DigitalOcean Systemd Deployment
+
+Use this only if you prefer running Python directly on the droplet without Docker.
 
 SSH into the droplet, update packages, and install system dependencies:
 

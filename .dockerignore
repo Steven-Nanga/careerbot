@@ -1,9 +1,12 @@
+.git
+.github
 .env
+.venv
 Resumes/
 jobs.db
 test_jobs.db
 smoke_jobs.db
 __pycache__/
 *.py[cod]
-.venv/
 data/
+*.log

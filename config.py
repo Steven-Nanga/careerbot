@@ -34,6 +34,9 @@ SMTP_USER = os.getenv("SMTP_USER", "careerbot71@gmail.com")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", "60"))
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
+NTFY_URL = os.getenv("NTFY_URL", "https://ntfy.sh")
+NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
+NTFY_PRIORITY = os.getenv("NTFY_PRIORITY", "4")
 
 PRIMARY_KEYWORDS = [
     "Data Analyst",

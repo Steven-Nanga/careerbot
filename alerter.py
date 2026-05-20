@@ -19,6 +19,9 @@ from config import (
     BREVO_API_KEY,
     EMAIL_FROM_NAME,
     EMAIL_PROVIDER,
+    NTFY_PRIORITY,
+    NTFY_TOPIC,
+    NTFY_URL,
     SMTP_HOST,
     SMTP_PASSWORD,
     SMTP_PORT,
@@ -28,6 +31,7 @@ from config import (
 
 LOGGER = logging.getLogger(__name__)
 BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
+MAX_NTFY_BODY_LENGTH = 3800
 
 
 class IPv4SMTP(smtplib.SMTP):
@@ -191,6 +195,59 @@ def _send_via_smtp(subject: str, body: str, html: str) -> None:
         LOGGER.info("Email sent successfully to %s", ALERT_EMAIL)
 
 
+def _build_ntfy_body(jobs: list[dict], body: str) -> str:
+    lines = body.splitlines()
+    if len(body) <= MAX_NTFY_BODY_LENGTH:
+        return body
+
+    compact = [
+        lines[0] if lines else "Hi Steven,",
+        "",
+        f"{len(jobs)} new matching job(s) found.",
+        "",
+    ]
+    for index, job in enumerate(jobs[:10], start=1):
+        compact.extend(
+            [
+                f"{index}. {job.get('title', 'Untitled role')} - {job.get('organisation', 'Unknown organisation')}",
+                f"   Score: {job.get('match_score') or 'N/A'}/100",
+                f"   Link: {job.get('url')}",
+                "",
+            ]
+        )
+    remaining = len(jobs) - 10
+    if remaining > 0:
+        compact.append(f"...and {remaining} more role(s).")
+    return "\n".join(compact)
+
+
+def _send_via_ntfy(subject: str, body: str, jobs: list[dict]) -> None:
+    if not NTFY_TOPIC:
+        raise RuntimeError("NTFY_TOPIC is not set; cannot send notification through ntfy.")
+
+    url = f"{NTFY_URL.rstrip('/')}/{NTFY_TOPIC}"
+    headers = {
+        "Title": subject,
+        "Priority": NTFY_PRIORITY,
+        "Tags": "briefcase",
+    }
+    first_url = jobs[0].get("url") if jobs else ""
+    if first_url:
+        headers["Click"] = str(first_url)
+
+    LOGGER.info("Sending notification through ntfy topic %s", NTFY_TOPIC)
+    response = requests.post(
+        url,
+        data=_build_ntfy_body(jobs, body).encode("utf-8"),
+        headers=headers,
+        timeout=SMTP_TIMEOUT,
+    )
+    if response.status_code >= 400:
+        LOGGER.error("ntfy rejected notification with HTTP %s: %s", response.status_code, response.text)
+        response.raise_for_status()
+    LOGGER.info("ntfy accepted notification: %s", response.text)
+
+
 def send_email(jobs: list[dict]) -> None:
     if not jobs:
         LOGGER.info("No matching jobs to email.")
@@ -199,6 +256,9 @@ def send_email(jobs: list[dict]) -> None:
     subject, body, html = build_digest(jobs)
     if EMAIL_PROVIDER == "brevo":
         _send_via_brevo(subject, body, html)
+        return
+    if EMAIL_PROVIDER == "ntfy":
+        _send_via_ntfy(subject, body, jobs)
         return
     _send_via_smtp(subject, body, html)
 

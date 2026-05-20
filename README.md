@@ -92,6 +92,17 @@ SMTP_USER=careerbot71@gmail.com
 
 In Brevo, the `SMTP_USER` email address must be a verified sender.
 
+For an open-source push notification option, use ntfy over HTTPS:
+
+```text
+EMAIL_PROVIDER=ntfy
+NTFY_URL=https://ntfy.sh
+NTFY_TOPIC=careerbot-your-random-private-topic
+NTFY_PRIORITY=4
+```
+
+Subscribe to the same topic in the ntfy phone app or at `https://ntfy.sh/careerbot-your-random-private-topic`. Pick a long random topic name because anyone who knows the topic can read/publish to it on the public ntfy server.
+
 ## Running Manually
 
 ```powershell
@@ -192,6 +203,9 @@ EMAIL_PROVIDER=smtp
 SMTP_PASSWORD=your_gmail_app_password_here
 SMTP_TIMEOUT=60
 BREVO_API_KEY=
+NTFY_URL=https://ntfy.sh
+NTFY_TOPIC=
+NTFY_PRIORITY=4
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30
@@ -294,6 +308,9 @@ EMAIL_PROVIDER=smtp
 SMTP_PASSWORD=your_gmail_app_password_here
 SMTP_TIMEOUT=60
 BREVO_API_KEY=
+NTFY_URL=https://ntfy.sh
+NTFY_TOPIC=
+NTFY_PRIORITY=4
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30

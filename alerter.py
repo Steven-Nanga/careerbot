@@ -12,9 +12,13 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from html import escape
 
+import requests
+
 from config import (
     ALERT_EMAIL,
+    BREVO_API_KEY,
     EMAIL_FROM_NAME,
+    EMAIL_PROVIDER,
     SMTP_HOST,
     SMTP_PASSWORD,
     SMTP_PORT,
@@ -23,6 +27,7 @@ from config import (
 )
 
 LOGGER = logging.getLogger(__name__)
+BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 class IPv4SMTP(smtplib.SMTP):
@@ -133,14 +138,34 @@ def build_test_job() -> dict:
     }
 
 
-def send_email(jobs: list[dict]) -> None:
-    if not jobs:
-        LOGGER.info("No matching jobs to email.")
-        return
-    if not SMTP_PASSWORD:
-        raise RuntimeError("SMTP_PASSWORD is not set; cannot send email.")
+def _send_via_brevo(subject: str, body: str, html: str) -> None:
+    if not BREVO_API_KEY:
+        raise RuntimeError("BREVO_API_KEY is not set; cannot send email through Brevo.")
 
-    subject, body, html = build_digest(jobs)
+    payload = {
+        "sender": {"name": EMAIL_FROM_NAME, "email": SMTP_USER},
+        "to": [{"email": ALERT_EMAIL}],
+        "subject": subject,
+        "textContent": body,
+        "htmlContent": html,
+    }
+    headers = {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json",
+    }
+    LOGGER.info("Sending email through Brevo API to %s", ALERT_EMAIL)
+    response = requests.post(BREVO_EMAIL_URL, json=payload, headers=headers, timeout=SMTP_TIMEOUT)
+    if response.status_code >= 400:
+        LOGGER.error("Brevo API rejected email with HTTP %s: %s", response.status_code, response.text)
+        response.raise_for_status()
+    LOGGER.info("Brevo accepted email for delivery: %s", response.text)
+
+
+def _send_via_smtp(subject: str, body: str, html: str) -> None:
+    if not SMTP_PASSWORD:
+        raise RuntimeError("SMTP_PASSWORD is not set; cannot send email through SMTP.")
+
     message = MIMEMultipart("alternative")
     message["From"] = str(Address(display_name=EMAIL_FROM_NAME, addr_spec=SMTP_USER))
     message["To"] = ALERT_EMAIL
@@ -148,7 +173,7 @@ def send_email(jobs: list[dict]) -> None:
     message.attach(MIMEText(body, "plain", "utf-8"))
     message.attach(MIMEText(html, "html", "utf-8"))
 
-    LOGGER.info("Sending email digest with %s jobs to %s", len(jobs), ALERT_EMAIL)
+    LOGGER.info("Sending email digest to %s through SMTP", ALERT_EMAIL)
     LOGGER.info("Connecting to SMTP server %s:%s as %s", SMTP_HOST, SMTP_PORT, SMTP_USER)
     try:
         server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT)
@@ -164,6 +189,18 @@ def send_email(jobs: list[dict]) -> None:
         LOGGER.info("SMTP login accepted")
         server.sendmail(SMTP_USER, [ALERT_EMAIL], message.as_string())
         LOGGER.info("Email sent successfully to %s", ALERT_EMAIL)
+
+
+def send_email(jobs: list[dict]) -> None:
+    if not jobs:
+        LOGGER.info("No matching jobs to email.")
+        return
+
+    subject, body, html = build_digest(jobs)
+    if EMAIL_PROVIDER == "brevo":
+        _send_via_brevo(subject, body, html)
+        return
+    _send_via_smtp(subject, body, html)
 
 
 def send_test_email() -> None:

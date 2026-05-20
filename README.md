@@ -65,7 +65,9 @@ $env:SMTP_HOST = "smtp.gmail.com"
 $env:SMTP_PORT = "587"
 $env:SMTP_USER = "careerbot71@gmail.com"
 $env:EMAIL_FROM_NAME = "CareerBot"
+$env:EMAIL_PROVIDER = "smtp"
 $env:SMTP_PASSWORD = "your_app_password_here"
+$env:BREVO_API_KEY = ""
 $env:ALERT_EMAIL = "stephennanga97@gmail.com"
 ```
 
@@ -79,6 +81,16 @@ Current sender setup:
 From: CareerBot <careerbot71@gmail.com>
 To: stephennanga97@gmail.com
 ```
+
+If your server blocks outbound SMTP, use the Brevo API over HTTPS instead:
+
+```text
+EMAIL_PROVIDER=brevo
+BREVO_API_KEY=your_brevo_api_key
+SMTP_USER=careerbot71@gmail.com
+```
+
+In Brevo, the `SMTP_USER` email address must be a verified sender.
 
 ## Running Manually
 
@@ -123,7 +135,9 @@ Add these repository secrets in GitHub:
 - `SMTP_PORT`
 - `SMTP_USER`
 - `EMAIL_FROM_NAME`
+- `EMAIL_PROVIDER`
 - `SMTP_PASSWORD`
+- `BREVO_API_KEY`
 - `ALERT_EMAIL`
 
 Then push the project to GitHub. The action will install dependencies and run:
@@ -174,8 +188,10 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=careerbot71@gmail.com
 EMAIL_FROM_NAME=CareerBot
+EMAIL_PROVIDER=smtp
 SMTP_PASSWORD=your_gmail_app_password_here
 SMTP_TIMEOUT=60
+BREVO_API_KEY=
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30
@@ -274,8 +290,10 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=careerbot71@gmail.com
 EMAIL_FROM_NAME=CareerBot
+EMAIL_PROVIDER=smtp
 SMTP_PASSWORD=your_gmail_app_password_here
 SMTP_TIMEOUT=60
+BREVO_API_KEY=
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30

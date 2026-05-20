@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import base64
 import smtplib
 import socket
 from datetime import datetime
@@ -19,6 +20,9 @@ from config import (
     BREVO_API_KEY,
     EMAIL_FROM_NAME,
     EMAIL_PROVIDER,
+    GMAIL_CLIENT_ID,
+    GMAIL_CLIENT_SECRET,
+    GMAIL_REFRESH_TOKEN,
     NTFY_PRIORITY,
     NTFY_TOPIC,
     NTFY_URL,
@@ -31,6 +35,8 @@ from config import (
 
 LOGGER = logging.getLogger(__name__)
 BREVO_EMAIL_URL = "https://api.brevo.com/v3/smtp/email"
+GMAIL_TOKEN_URL = "https://oauth2.googleapis.com/token"
+GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
 MAX_NTFY_BODY_LENGTH = 3800
 
 
@@ -248,6 +254,60 @@ def _send_via_ntfy(subject: str, body: str, jobs: list[dict]) -> None:
     LOGGER.info("ntfy accepted notification: %s", response.text)
 
 
+def _gmail_access_token() -> str:
+    missing = [
+        name
+        for name, value in {
+            "GMAIL_CLIENT_ID": GMAIL_CLIENT_ID,
+            "GMAIL_CLIENT_SECRET": GMAIL_CLIENT_SECRET,
+            "GMAIL_REFRESH_TOKEN": GMAIL_REFRESH_TOKEN,
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise RuntimeError(f"Missing Gmail API setting(s): {', '.join(missing)}")
+
+    response = requests.post(
+        GMAIL_TOKEN_URL,
+        data={
+            "client_id": GMAIL_CLIENT_ID,
+            "client_secret": GMAIL_CLIENT_SECRET,
+            "refresh_token": GMAIL_REFRESH_TOKEN,
+            "grant_type": "refresh_token",
+        },
+        timeout=SMTP_TIMEOUT,
+    )
+    if response.status_code >= 400:
+        LOGGER.error("Gmail token refresh failed with HTTP %s: %s", response.status_code, response.text)
+        response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _send_via_gmail_api(subject: str, body: str, html: str) -> None:
+    message = MIMEMultipart("alternative")
+    message["From"] = str(Address(display_name=EMAIL_FROM_NAME, addr_spec=SMTP_USER))
+    message["To"] = ALERT_EMAIL
+    message["Subject"] = subject
+    message.attach(MIMEText(body, "plain", "utf-8"))
+    message.attach(MIMEText(html, "html", "utf-8"))
+
+    raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+    LOGGER.info("Sending email through Gmail API to %s", ALERT_EMAIL)
+    response = requests.post(
+        GMAIL_SEND_URL,
+        headers={
+            "Authorization": f"Bearer {_gmail_access_token()}",
+            "Content-Type": "application/json",
+        },
+        json={"raw": raw_message},
+        timeout=SMTP_TIMEOUT,
+    )
+    if response.status_code >= 400:
+        LOGGER.error("Gmail API rejected email with HTTP %s: %s", response.status_code, response.text)
+        response.raise_for_status()
+    LOGGER.info("Gmail API accepted email for delivery: %s", response.text)
+
+
 def send_email(jobs: list[dict]) -> None:
     if not jobs:
         LOGGER.info("No matching jobs to email.")
@@ -259,6 +319,9 @@ def send_email(jobs: list[dict]) -> None:
         return
     if EMAIL_PROVIDER == "ntfy":
         _send_via_ntfy(subject, body, jobs)
+        return
+    if EMAIL_PROVIDER == "gmail_api":
+        _send_via_gmail_api(subject, body, html)
         return
     _send_via_smtp(subject, body, html)
 

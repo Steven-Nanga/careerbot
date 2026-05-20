@@ -37,6 +37,9 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 NTFY_URL = os.getenv("NTFY_URL", "https://ntfy.sh")
 NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
 NTFY_PRIORITY = os.getenv("NTFY_PRIORITY", "4")
+GMAIL_CLIENT_ID = os.getenv("GMAIL_CLIENT_ID", "")
+GMAIL_CLIENT_SECRET = os.getenv("GMAIL_CLIENT_SECRET", "")
+GMAIL_REFRESH_TOKEN = os.getenv("GMAIL_REFRESH_TOKEN", "")
 
 PRIMARY_KEYWORDS = [
     "Data Analyst",

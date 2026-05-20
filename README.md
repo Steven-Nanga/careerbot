@@ -103,6 +103,24 @@ NTFY_PRIORITY=4
 
 Subscribe to the same topic in the ntfy phone app or at `https://ntfy.sh/careerbot-your-random-private-topic`. Pick a long random topic name because anyone who knows the topic can read/publish to it on the public ntfy server.
 
+To send real email without SMTP, use the Gmail API over HTTPS:
+
+```text
+EMAIL_PROVIDER=gmail_api
+SMTP_USER=careerbot71@gmail.com
+GMAIL_CLIENT_ID=your_google_oauth_client_id
+GMAIL_CLIENT_SECRET=your_google_oauth_client_secret
+GMAIL_REFRESH_TOKEN=your_generated_refresh_token
+```
+
+Generate the refresh token once after setting `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`:
+
+```bash
+python gmail_auth.py
+```
+
+The script prints `GMAIL_REFRESH_TOKEN`. Add that value to `.env`.
+
 ## Running Manually
 
 ```powershell
@@ -206,6 +224,9 @@ BREVO_API_KEY=
 NTFY_URL=https://ntfy.sh
 NTFY_TOPIC=
 NTFY_PRIORITY=4
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_REFRESH_TOKEN=
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30
@@ -311,6 +332,9 @@ BREVO_API_KEY=
 NTFY_URL=https://ntfy.sh
 NTFY_TOPIC=
 NTFY_PRIORITY=4
+GMAIL_CLIENT_ID=
+GMAIL_CLIENT_SECRET=
+GMAIL_REFRESH_TOKEN=
 ALERT_EMAIL=stephennanga97@gmail.com
 SSL_VERIFY=true
 REQUEST_TIMEOUT=30

@@ -11,7 +11,15 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from html import escape
 
-from config import ALERT_EMAIL, EMAIL_FROM_NAME, SMTP_HOST, SMTP_PASSWORD, SMTP_PORT, SMTP_USER
+from config import (
+    ALERT_EMAIL,
+    EMAIL_FROM_NAME,
+    SMTP_HOST,
+    SMTP_PASSWORD,
+    SMTP_PORT,
+    SMTP_TIMEOUT,
+    SMTP_USER,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -119,10 +127,14 @@ def send_email(jobs: list[dict]) -> None:
     message.attach(MIMEText(html, "html", "utf-8"))
 
     LOGGER.info("Sending email digest with %s jobs to %s", len(jobs), ALERT_EMAIL)
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+    LOGGER.info("Connecting to SMTP server %s:%s as %s", SMTP_HOST, SMTP_PORT, SMTP_USER)
+    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=SMTP_TIMEOUT) as server:
         server.starttls()
+        LOGGER.info("SMTP TLS started")
         server.login(SMTP_USER, SMTP_PASSWORD)
+        LOGGER.info("SMTP login accepted")
         server.sendmail(SMTP_USER, [ALERT_EMAIL], message.as_string())
+        LOGGER.info("Email sent successfully to %s", ALERT_EMAIL)
 
 
 def send_test_email() -> None:

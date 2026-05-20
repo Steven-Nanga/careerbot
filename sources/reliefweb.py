@@ -10,6 +10,7 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 
+import feedparser
 import requests
 from bs4 import BeautifulSoup
 
@@ -136,6 +137,43 @@ def _rss_jobs() -> list[dict]:
     return jobs
 
 
+def _rss_jobs_tolerant() -> list[dict]:
+    response = requests.get(
+        RSS_URL,
+        headers=BROWSER_HEADERS,
+        timeout=REQUEST_TIMEOUT,
+    )
+    response.raise_for_status()
+
+    feed = feedparser.parse(response.content)
+    jobs = []
+    for entry in feed.entries:
+        title = getattr(entry, "title", "") or "Untitled role"
+        url = getattr(entry, "link", "")
+        guid = getattr(entry, "id", "") or getattr(entry, "guid", "") or url
+        description_html = getattr(entry, "summary", "") or getattr(entry, "description", "")
+        if not description_html and getattr(entry, "content", None):
+            description_html = entry.content[0].get("value", "")
+        description = _clean_html(description_html)
+        organisation = getattr(entry, "author", "") or "ReliefWeb"
+        tags = [tag.get("term", "") for tag in getattr(entry, "tags", [])]
+        location = "Malawi" if "malawi" in " ".join([title, description, *tags]).lower() else ""
+        jobs.append(
+            {
+                "id": f"reliefweb:{guid}",
+                "title": title,
+                "organisation": organisation,
+                "location": location,
+                "closing_date": _closing_date_from_text(description),
+                "url": url,
+                "description": description,
+                "source": "ReliefWeb",
+            }
+        )
+    LOGGER.info("ReliefWeb tolerant RSS fallback returned %s jobs", len(jobs))
+    return jobs
+
+
 def scrape() -> list[dict]:
     try:
         return _api_jobs()
@@ -153,5 +191,9 @@ def scrape() -> list[dict]:
     except requests.RequestException as exc:
         LOGGER.warning("ReliefWeb RSS fallback is unavailable; skipping source: %s", exc)
     except ET.ParseError as exc:
-        LOGGER.warning("ReliefWeb RSS fallback returned invalid XML; skipping source: %s", exc)
+        LOGGER.warning("ReliefWeb RSS fallback returned invalid XML; trying tolerant parser: %s", exc)
+        try:
+            return _rss_jobs_tolerant()
+        except requests.RequestException as tolerant_exc:
+            LOGGER.warning("ReliefWeb tolerant RSS fallback is unavailable; skipping source: %s", tolerant_exc)
     return []

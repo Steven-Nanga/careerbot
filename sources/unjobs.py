@@ -8,7 +8,8 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 
-from config import REQUEST_TIMEOUT, USER_AGENT
+from config import REQUEST_TIMEOUT
+from sources.request_helpers import BROWSER_HEADERS
 
 LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://unjobs.org"
@@ -20,12 +21,21 @@ def _text(node) -> str:
 
 
 def scrape() -> list[dict]:
-    response = requests.get(
-        MALAWI_URL,
-        headers={"User-Agent": USER_AGENT},
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
+    try:
+        response = requests.get(
+            MALAWI_URL,
+            headers=BROWSER_HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        LOGGER.warning("UN Jobs blocked or unavailable with HTTP %s; skipping source", status_code)
+        return []
+    except requests.RequestException as exc:
+        LOGGER.warning("UN Jobs is unavailable; skipping source: %s", exc)
+        return []
+
     soup = BeautifulSoup(response.text, "html.parser")
     rows = soup.select(".job, .jtitle, li, tr")
 

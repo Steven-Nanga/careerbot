@@ -15,10 +15,16 @@ BASE_DIR = Path(__file__).resolve().parent
 if load_dotenv:
     load_dotenv(BASE_DIR / ".env")
 
+
+def env_int(name: str, default: int) -> int:
+    value = os.getenv(name, "").strip()
+    return int(value) if value else default
+
+
 DATABASE_PATH = os.getenv("JOB_SCRAPER_DB", str(BASE_DIR / "jobs.db"))
 RESUME_DIR = os.getenv("RESUME_DIR", str(BASE_DIR / "Resumes"))
 
-REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
+REQUEST_TIMEOUT = env_int("REQUEST_TIMEOUT", 30)
 SSL_VERIFY = os.getenv("SSL_VERIFY", "true").lower() not in {"0", "false", "no"}
 USER_AGENT = os.getenv(
     "USER_AGENT",
@@ -29,10 +35,10 @@ ALERT_EMAIL = os.getenv("ALERT_EMAIL", "stephennanga97@gmail.com")
 EMAIL_FROM_NAME = os.getenv("EMAIL_FROM_NAME", "CareerBot")
 EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp").lower()
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_PORT = env_int("SMTP_PORT", 587)
 SMTP_USER = os.getenv("SMTP_USER", "careerbot71@gmail.com")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", "60"))
+SMTP_TIMEOUT = env_int("SMTP_TIMEOUT", 60)
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 NTFY_URL = os.getenv("NTFY_URL", "https://ntfy.sh")
 NTFY_TOPIC = os.getenv("NTFY_TOPIC", "")
@@ -118,7 +124,7 @@ RESUME_PROFILE_TERMS = [
     "MEL",
 ]
 
-RESUME_SCORE_ALERT_THRESHOLD = int(os.getenv("RESUME_SCORE_ALERT_THRESHOLD", "45"))
+RESUME_SCORE_ALERT_THRESHOLD = env_int("RESUME_SCORE_ALERT_THRESHOLD", 45)
 
 LINKEDIN_SEARCH_TERMS = [
     "Data Analyst Malawi",

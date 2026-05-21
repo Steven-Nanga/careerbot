@@ -113,13 +113,13 @@ GMAIL_CLIENT_SECRET=your_google_oauth_client_secret
 GMAIL_REFRESH_TOKEN=your_generated_refresh_token
 ```
 
-Generate the refresh token once after setting `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`:
+Generate the refresh token once on your local computer, not on the droplet, after setting `GMAIL_CLIENT_ID` and `GMAIL_CLIENT_SECRET`:
 
 ```bash
 python gmail_auth.py
 ```
 
-The script prints `GMAIL_REFRESH_TOKEN`. Add that value to `.env`.
+The script opens a browser window and prints `GMAIL_REFRESH_TOKEN` after approval. Add that value to the droplet `.env`.
 
 ## Running Manually
 

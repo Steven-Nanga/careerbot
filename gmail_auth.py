@@ -27,17 +27,14 @@ def main() -> None:
         }
     }
     flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-    flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
-    auth_url, _ = flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
+    credentials = flow.run_local_server(
+        host="localhost",
+        port=8080,
+        authorization_prompt_message="Open this URL in your browser and approve CareerBot:\n{url}",
+        success_message="CareerBot Gmail authorization complete. You can close this browser tab.",
+        open_browser=True,
         prompt="consent",
     )
-    print("Open this URL in your browser and approve CareerBot:")
-    print(auth_url)
-    code = input("Paste the authorization code here: ").strip()
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
     print(json.dumps({"GMAIL_REFRESH_TOKEN": credentials.refresh_token}, indent=2))
 
 
